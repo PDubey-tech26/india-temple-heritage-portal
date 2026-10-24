@@ -1266,323 +1266,246 @@ function Saved({ items }) {
 
 }
 
-function AdminLogin() {
 
+function adminlogin() {
   const [email, setEmail] = useState('');
-
   const [password, setPassword] = useState('');
-
   const [error, setError] = useState('');
-
   const [token, setToken] = useState(
-
     () => localStorage.getItem('adminToken') || ''
-
   );
-
   const [templeName, setTempleName] = useState('');
-
   const [city, setCity] = useState('');
-
   const [state, setState] = useState('');
-
   const [message, setMessage] = useState('');
+  const [temples, setTemples] = useState([]);
+  const [loadingTemples, setLoadingTemples] = useState(false);
 
   const login = async (event) => {
-
     event.preventDefault();
-
     setError('');
 
     try {
-
       const response = await fetch(`${API}/admin/login`, {
-
         method: 'POST',
-
         headers: { 'Content-Type': 'application/json' },
-
         body: JSON.stringify({ email, password }),
-
       });
-
       const data = await response.json();
 
-      if (!response.ok) {
-
-        throw new Error(data.error || 'Login failed');
-
-      }
+      if (!response.ok) throw new Error(data.error || 'Login failed');
 
       localStorage.setItem('adminToken', data.token);
-
       setToken(data.token);
-
     } catch (err) {
-
-      setError(
-
-        `${err.message} — check that the API is running and an admin user exists.`
-
-      );
-
+      setError(`${err.message} — check that the API is running and an admin user exists.`);
     }
-
   };
 
+  const loadTemples = async (authToken = token) => {
+    setLoadingTemples(true);
+    try {
+      const response = await fetch(`${API}/admin/temples`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || 'Could not load temples');
+      setTemples(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoadingTemples(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) loadTemples(token);
+  }, [token]);
+
   const addTemple = async (event) => {
-
     event.preventDefault();
-
     setMessage('');
 
     try {
-
       const response = await fetch(`${API}/admin/temples`, {
-
         method: 'POST',
-
         headers: {
-
           'Content-Type': 'application/json',
-
           Authorization: `Bearer ${token}`,
-
         },
-
         body: JSON.stringify({
-
           name: templeName,
-
           city,
-
           state,
-
-          slug: templeName
-
-            .toLowerCase()
-
-            .trim()
-
-            .replace(/[^a-z0-9]+/g, '-')
-
-            .replace(/^-|-$/g, ''),
-
+          slug: templeName.toLowerCase().trim()
+            .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           status: 'pending',
-
           description: 'Awaiting editorial review.',
-
           deity: 'Please add deity',
-
           category: 'Heritage Temple',
-
         }),
-
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-
-        throw new Error(data.error || 'Could not add temple');
-
-      }
+      if (!response.ok) throw new Error(data.error || 'Could not add temple');
 
       setMessage('Temple saved as pending review.');
-
       setTempleName('');
-
       setCity('');
-
       setState('');
-
+      await loadTemples();
     } catch (err) {
-
       setMessage(err.message);
-
     }
+  };
 
+  const updateStatus = async (temple, status) => {
+    setMessage('');
+
+    try {
+      const response = await fetch(
+        `${API}/admin/temples/${temple.id}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Status update failed');
+
+      setMessage(`${temple.name}: ${status}.`);
+      await loadTemples();
+    } catch (err) {
+      setMessage(err.message);
+    }
   };
 
   const logout = () => {
-
     localStorage.removeItem('adminToken');
-
     setToken('');
-
     setPassword('');
-
     setMessage('');
-
+    setTemples([]);
   };
 
   if (!token) {
-
     return (
-
       <main className="admin-page">
-
         <form className="admin-card" onSubmit={login}>
-
           <div className="eyebrow"><span /> CONTENT MANAGEMENT</div>
-
           <h1>Admin <em>sign in.</em></h1>
-
           <p>For authorised content editors.</p>
-
           <label>
-
             Email
-
-            <input
-
-              type="email"
-
-              value={email}
-
+            <input type="email" value={email}
               onChange={(event) => setEmail(event.target.value)}
-
-              required
-
-              autoComplete="username"
-
-            />
-
+              required autoComplete="username" />
           </label>
-
           <label>
-
             Password
-
-            <input
-
-              type="password"
-
-              value={password}
-
+            <input type="password" value={password}
               onChange={(event) => setPassword(event.target.value)}
-
-              required
-
-              autoComplete="current-password"
-
-            />
-
+              required autoComplete="current-password" />
           </label>
-
           {error && <p className="form-error" role="alert">{error}</p>}
-
           <button className="primary-button" type="submit">
-
             Sign in securely <ArrowRight size={16} />
-
           </button>
-
           <small>
-
             Create an admin account through the server's secure setup process.
-
             Public users cannot self-register as admins.
-
           </small>
-
         </form>
-
       </main>
-
     );
-
   }
 
   return (
-
     <main className="admin-page">
-
       <section className="admin-card">
-
         <div className="eyebrow"><span /> CONTENT MANAGEMENT</div>
-
         <h1>Admin <em>workspace.</em></h1>
-
         <p>Add a temple record for editorial review.</p>
 
         <form onSubmit={addTemple}>
-
           <label>
-
             Temple name
-
-            <input
-
-              value={templeName}
-
+            <input value={templeName}
               onChange={(event) => setTempleName(event.target.value)}
-
-              required
-
-            />
-
+              required />
           </label>
-
           <div className="form-two">
-
             <label>
-
               City
-
-              <input
-
-                value={city}
-
+              <input value={city}
                 onChange={(event) => setCity(event.target.value)}
-
-                required
-
-              />
-
+                required />
             </label>
-
             <label>
-
               State
-
-              <input
-
-                value={state}
-
+              <input value={state}
                 onChange={(event) => setState(event.target.value)}
-
-                required
-
-              />
-
+                required />
             </label>
-
           </div>
-
           <button className="primary-button" type="submit">
-
             Create pending record <ArrowRight size={16} />
-
           </button>
-
-          {message && <p className="form-message" role="status">{message}</p>}
-
         </form>
 
+        {message && <p className="form-message" role="status">{message}</p>}
+
+        <div style={{ marginTop: 28 }}>
+          <h2>Temple records</h2>
+          <button className="text-button" type="button"
+            onClick={() => loadTemples()}>
+            Refresh records
+          </button>
+
+          {loadingTemples && <p>Loading temples...</p>}
+
+          {!loadingTemples && temples.length === 0 && (
+            <p>No temple records found.</p>
+          )}
+
+          {temples.map((temple) => (
+            <article key={temple.id}
+              style={{ borderTop: '1px solid #e5d8ca', padding: '16px 0' }}>
+              <h3>{temple.name}</h3>
+              <p>{temple.city}, {temple.state}</p>
+              <p>Status: <strong>{temple.status}</strong></p>
+
+              {temple.status !== 'approved' && (
+                <button className="primary-button" type="button"
+                  onClick={() => updateStatus(temple, 'approved')}>
+                  Approve
+                </button>
+              )}
+
+              {temple.status !== 'rejected' && (
+                <button className="text-button" type="button"
+                  onClick={() => updateStatus(temple, 'rejected')}>
+                  Reject
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+
         <button className="text-button" onClick={logout}>
-
           Sign out
-
         </button>
-
       </section>
-
     </main>
-
   );
-
 }
+
 
 export default function App() {
 

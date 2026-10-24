@@ -68,8 +68,8 @@ const readSaved = () => {
   }
 }
 
-function useTemples() {
 
+function useTemples() {
   const [items, setItems] = useState(demoTemples);
   const [loading, setLoading] = useState(true);
 
@@ -78,11 +78,14 @@ function useTemples() {
 
     fetch(`${API}/temples`)
       .then((response) => {
-        if (!response.ok) throw new Error('Unable to load temples');
+        if (!response.ok) {
+          throw new Error("Unable to load temples");
+        }
         return response.json();
       })
       .then((payload) => {
         if (!active) return;
+
         const apiTemples = Array.isArray(payload)
           ? payload
           : Array.isArray(payload?.temples)
@@ -92,37 +95,46 @@ function useTemples() {
         const merged = demoTemples.map((demo) => {
           const apiTemple = apiTemples.find(
             (item) =>
-              item.slug === demo.slug ||
-              Number(item.id) === Number(demo.id) ||
-              item.name?.trim().toLowerCase() === demo.name.toLowerCase()
+              (item.slug && item.slug === demo.slug) ||
+              (item.name &&
+                item.name.trim().toLowerCase() ===
+                  demo.name.trim().toLowerCase())
           );
 
+          if (!apiTemple) return demo;
+
           return {
-            ...(apiTemple || {}),
             ...demo,
-            ...(apiTemple || {}),
-            id: demo.id,
-            slug: demo.slug,
-            name: demo.name,
-            city: demo.city,
-            state: demo.state,
-            image: demo.image,
-            description: demo.description || apiTemple?.description || '',
+            ...apiTemple,
+            image:
+              apiTemple.image ||
+              apiTemple.image_url ||
+              demo.image ||
+              "",
           };
         });
 
         const extras = apiTemples.filter(
-          (item) => !demoTemples.some(
-            (demo) => demo.slug === item.slug || Number(demo.id) === Number(item.id)
-          )
+          (item) =>
+            !demoTemples.some(
+              (demo) =>
+                (item.slug && item.slug === demo.slug) ||
+                (item.name &&
+                  item.name.trim().toLowerCase() ===
+                    demo.name.trim().toLowerCase())
+            )
         );
 
-        setItems([...merged, ...extras.map((item) => ({
-          ...item,
-          image: item.image || item.image_url || '',
-        }))]);
+        setItems([
+          ...merged,
+          ...extras.map((item) => ({
+            ...item,
+            image: item.image || item.image_url || "",
+          })),
+        ]);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error("Temple loading failed:", error);
         if (active) setItems(demoTemples);
       })
       .finally(() => {

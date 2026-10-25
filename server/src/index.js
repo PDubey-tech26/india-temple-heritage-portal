@@ -7,6 +7,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { pool } from './db.js';
+import { v2 as cloudinary } from 'cloudinary';
+import multer from 'multer';
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -18,6 +20,58 @@ app.disable('x-powered-by');
 app.use(helmet());
 app.use(cors({ origin: (process.env.CLIENT_ORIGIN || 'http://localhost:5173').split(',').map(s=>s.trim()), credentials: false }));
 app.use(express.json({ limit: '1mb' }));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    if (file.mimetype.startsWith('image/')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Only image files are allowed'));
+    }
+  },
+});
+
+app.post('/api/admin/upload-image', auth, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Please select an image' });
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'temple-heritage',
+          resource_type: 'image',
+        },
+        (error, uploadedImage) => {
+          if (error) reject(error);
+          else resolve(uploadedImage);
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    return res.json({
+      url: result.secure_url,
+      publicId: result.public_id,
+    });
+  } catch (error) {
+    console.error('Image upload failed:', error.message);
+    return res.status(500).json({ error: 'Image upload failed' });
+  }
+});
+
 app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false }));
 
 app.get('/api/health', (_req,res)=>res.json({ ok:true, service:'temple-heritage-api' }));
@@ -78,6 +132,43 @@ app.post('/api/admin/login',async(req,res,next)=>{
   res.json({token,user:{email:user.email,role:user.role},expiresIn:28800});
  }catch(e){next(e);}
 });
+
+app.post(
+  '/api/admin/upload-image',
+  auth,
+  upload.single('image'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Please select an image' });
+      }
+
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'temple-heritage',
+            resource_type: 'image',
+          },
+          (error, uploadedImage) => {
+            if (error) reject(error);
+            else resolve(uploadedImage);
+          }
+        );
+
+        stream.end(req.file.buffer);
+      });
+
+      return res.json({
+        url: result.secure_url,
+        publicId: result.public_id,
+      });
+    } catch (error) {
+      console.error('Image upload failed:', error.message);
+      return res.status(500).json({ error: 'Image upload failed' });
+    }
+  }
+);
+
 app.get('/api/admin/temples',auth,async(req,res,next)=>{
  try{const r=await pool.query(`${templeSelect} ORDER BY t.updated_at DESC LIMIT 500`);res.json(r.rows.map(formatTemple));}catch(e){next(e);}
 });

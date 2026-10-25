@@ -1289,6 +1289,13 @@ function AdminLogin() {
   const [templeName, setTempleName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [deity, setDeity] = useState('');
+const [description, setDescription] = useState('');
+const [history, setHistory] = useState('');
+const [templeImage, setTempleImage] = useState(null);
+const [imagePreview, setImagePreview] = useState('');
+const [imageUrl, setImageUrl] = useState('');
+const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState('');
   const [temples, setTemples] = useState([]);
   const [loadingTemples, setLoadingTemples] = useState(false);
@@ -1335,12 +1342,50 @@ function AdminLogin() {
     if (token) loadTemples(token);
   }, [token]);
 
+const uploadTempleImage = async () => {
+  if (!templeImage) {
+    throw new Error('Please select a temple image first.');
+  }
+
+  const formData = new FormData();
+  formData.append('image', templeImage);
+
+  setUploadingImage(true);
+
+  try {
+    const response = await fetch(`${API}/admin/upload-image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Image upload failed');
+    }
+
+    setImageUrl(data.url);
+    return data.url;
+  } finally {
+    setUploadingImage(false);
+  }
+};
+
   const addTemple = async (event) => {
     event.preventDefault();
     setMessage('');
 
-    try {
-      const response = await fetch(`${API}/admin/temples`, {
+     try {
+  if (!templeImage) {
+    throw new Error('Please select a temple image.');
+  }
+
+  const uploadedImageUrl = await uploadTempleImage();
+
+  const response = await fetch(`${API}/admin/temples`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1355,7 +1400,9 @@ function AdminLogin() {
           status: 'pending',
           description: 'Awaiting editorial review.',
           deity: 'Please add deity',
+          history: 'Please add history',
           category: 'Heritage Temple',
+          imageUrl: uploadedImageUrl,
         }),
       });
 
@@ -1465,6 +1512,41 @@ function AdminLogin() {
                 onChange={(event) => setState(event.target.value)}
                 required />
             </label>
+            <label>
+  Temple image
+  <input
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+    required
+    onChange={(event) => {
+      const file = event.target.files?.[0];
+
+      setTempleImage(file || null);
+      setImageUrl('');
+
+      if (file) {
+        setImagePreview(URL.createObjectURL(file));
+      } else {
+        setImagePreview('');
+      }
+    }}
+  />
+</label>
+
+{imagePreview && (
+  <img
+    src={imagePreview}
+    alt="Temple preview"
+    style={{
+      width: '100%',
+      maxHeight: 260,
+      objectFit: 'cover',
+      borderRadius: 12,
+      margin: '12px 0',
+    }}
+  />
+)}
+
           </div>
           <button className="primary-button" type="submit">
             Create pending record <ArrowRight size={16} />

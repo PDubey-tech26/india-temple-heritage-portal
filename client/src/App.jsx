@@ -1283,22 +1283,41 @@ function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [token, setToken] = useState(
-    () => localStorage.getItem('adminToken') || ''
-  );
+  const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
+  const [role, setRole] = useState(() => {
+    const savedRole = localStorage.getItem('adminRole');
+    if (savedRole) return savedRole;
+    try {
+      const savedToken = localStorage.getItem('adminToken');
+      if (!savedToken) return '';
+      return JSON.parse(atob(savedToken.split('.')[1])).role || '';
+    } catch {
+      return '';
+    }
+  });
+
   const [templeName, setTempleName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [address, setAddress] = useState('');
   const [deity, setDeity] = useState('');
-const [description, setDescription] = useState('');
-const [history, setHistory] = useState('');
-const [templeImage, setTempleImage] = useState(null);
-const [imagePreview, setImagePreview] = useState('');
-const [imageUrl, setImageUrl] = useState('');
-const [uploadingImage, setUploadingImage] = useState(false);
+  const [category, setCategory] = useState('Heritage Temple');
+  const [description, setDescription] = useState('');
+  const [history, setHistory] = useState('');
+  const [timings, setTimings] = useState('');
+  const [bestTime, setBestTime] = useState('');
+  const [status, setStatus] = useState('pending');
+  const [templeImage, setTempleImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [savingTemple, setSavingTemple] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
   const [temples, setTemples] = useState([]);
   const [loadingTemples, setLoadingTemples] = useState(false);
+
+  const isAdmin = role === 'admin';
 
   const login = async (event) => {
     event.preventDefault();
@@ -1311,24 +1330,29 @@ const [uploadingImage, setUploadingImage] = useState(false);
         body: JSON.stringify({ email, password }),
       });
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || 'Login failed');
 
+      const userRole = data.user?.role || '';
       localStorage.setItem('adminToken', data.token);
+      if (userRole) localStorage.setItem('adminRole', userRole);
+      else localStorage.removeItem('adminRole');
+
+      setRole(userRole);
       setToken(data.token);
+      setPassword('');
     } catch (err) {
-      setError(`${err.message} — check that the API is running and an admin user exists.`);
+      setError(`${err.message} — check that the API is running and an authorised admin account exists.`);
     }
   };
 
   const loadTemples = async (authToken = token) => {
+    if (!authToken) return;
     setLoadingTemples(true);
     try {
       const response = await fetch(`${API}/admin/temples`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || 'Could not load temples');
       setTemples(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -1342,103 +1366,169 @@ const [uploadingImage, setUploadingImage] = useState(false);
     if (token) loadTemples(token);
   }, [token]);
 
-const uploadTempleImage = async () => {
-  if (!templeImage) {
-    throw new Error('Please select a temple image first.');
-  }
+  const resetForm = () => {
+    setEditingId(null);
+    setTempleName('');
+    setCity('');
+    setState('');
+    setAddress('');
+    setDeity('');
+    setCategory('Heritage Temple');
+    setDescription('');
+    setHistory('');
+    setTimings('');
+    setBestTime('');
+    setStatus('pending');
+    setTempleImage(null);
+    setImagePreview('');
+    setImageUrl('');
+  };
 
-  const formData = new FormData();
-  formData.append('image', templeImage);
+  const uploadTempleImage = async () => {
+    if (!templeImage) throw new Error('Please select a temple image first.');
 
-  setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('image', templeImage);
+    setUploadingImage(true);
 
-  try {
-    const response = await fetch(`${API}/admin/upload-image`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Image upload failed');
+    try {
+      const response = await fetch(`${API}/admin/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Image upload failed');
+      if (!data.url) throw new Error('Image upload response did not include an image URL.');
+      setImageUrl(data.url);
+      return data.url;
+    } finally {
+      setUploadingImage(false);
     }
+  };
 
-    setImageUrl(data.url);
-    return data.url;
-  } finally {
-    setUploadingImage(false);
-  }
-};
+  const startEdit = (temple) => {
+    setEditingId(temple.id);
+    setTempleName(temple.name || '');
+    setCity(temple.city || '');
+    setState(temple.state || '');
+    setAddress(temple.address || '');
+    setDeity(temple.deity || '');
+    setCategory(temple.category || 'Heritage Temple');
+    setDescription(temple.description || '');
+    setHistory(temple.history || '');
+    setTimings(temple.timings || '');
+    setBestTime(temple.bestTime || '');
+    setStatus(temple.status || 'pending');
+    setTempleImage(null);
+    const currentImage = temple.image_url || temple.image || '';
+    setImageUrl(currentImage);
+    setImagePreview(currentImage);
+    setMessage(`Editing ${temple.name}. Make your changes and save.`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  const addTemple = async (event) => {
+  const saveTemple = async (event) => {
     event.preventDefault();
     setMessage('');
+    setSavingTemple(true);
 
-     try {
-  if (!templeImage) {
-    throw new Error('Please select a temple image.');
-  }
+    try {
+      let finalImageUrl = imageUrl;
+      if (templeImage) {
+        finalImageUrl = await uploadTempleImage();
+      }
+      if (!editingId && !finalImageUrl) {
+        throw new Error('Please select a temple image.');
+      }
 
-  const uploadedImageUrl = await uploadTempleImage();
+      const slug = templeName.toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-  const response = await fetch(`${API}/admin/temples`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: templeName,
-          city,
-          state,
-          slug: templeName.toLowerCase().trim()
-            .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-          status: 'pending',
-          description: 'Awaiting editorial review.',
-          deity: 'Please add deity',
-          history: 'Please add history',
-          category: 'Heritage Temple',
-         image_url: uploadedImageUrl,
-        }),
-      });
+      const payload = {
+        name: templeName.trim(),
+        slug,
+        city: city.trim(),
+        state: state.trim(),
+        address: address.trim(),
+        deity: deity.trim(),
+        category: category.trim() || 'Heritage Temple',
+        description: description.trim(),
+        history: history.trim(),
+        timings: timings.trim() || 'Please confirm with the temple authority',
+        bestTime: bestTime.trim(),
+        status: isAdmin ? status : (editingId ? status : 'pending'),
+        image_url: finalImageUrl,
+      };
 
+      const isEditing = editingId !== null;
+      const response = await fetch(
+        isEditing ? `${API}/admin/temples/${editingId}` : `${API}/admin/temples`,
+        {
+          method: isEditing ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Could not add temple');
+      if (!response.ok) throw new Error(data.error || `Could not ${isEditing ? 'update' : 'add'} temple`);
 
-      setMessage('Temple saved as pending review.');
-      setTempleName('');
-      setCity('');
-      setState('');
+      setMessage(isEditing ? 'Temple updated successfully.' : 'Temple saved as pending review.');
+      resetForm();
+      await loadTemples();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setSavingTemple(false);
+    }
+  };
+
+  const deleteTemple = async (temple) => {
+    if (!isAdmin) {
+      setMessage('Only an admin account can delete temple records.');
+      return;
+    }
+    const confirmed = window.confirm(`Delete "${temple.name}" permanently? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setMessage('');
+    try {
+      const response = await fetch(`${API}/admin/temples/${temple.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not delete temple');
+
+      if (editingId === temple.id) resetForm();
+      setMessage(`${temple.name} deleted.`);
       await loadTemples();
     } catch (err) {
       setMessage(err.message);
     }
   };
 
-  const updateStatus = async (temple, status) => {
+  const updateStatus = async (temple, nextStatus) => {
+    if (!isAdmin) {
+      setMessage('Only an admin account can approve or reject temple records.');
+      return;
+    }
     setMessage('');
-
     try {
-      const response = await fetch(
-        `${API}/admin/temples/${temple.id}/status`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status }),
-        }
-      );
-
+      const response = await fetch(`${API}/admin/temples/${temple.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Status update failed');
-
-      setMessage(`${temple.name}: ${status}.`);
+      setMessage(`${temple.name}: ${nextStatus}.`);
       await loadTemples();
     } catch (err) {
       setMessage(err.message);
@@ -1447,10 +1537,13 @@ const uploadTempleImage = async () => {
 
   const logout = () => {
     localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRole');
     setToken('');
+    setRole('');
     setPassword('');
     setMessage('');
     setTemples([]);
+    resetForm();
   };
 
   if (!token) {
@@ -1462,22 +1555,30 @@ const uploadTempleImage = async () => {
           <p>For authorised content editors.</p>
           <label>
             Email
-            <input type="email" value={email}
+            <input
+              type="email"
+              value={email}
               onChange={(event) => setEmail(event.target.value)}
-              required autoComplete="username" />
+              required
+              autoComplete="username"
+            />
           </label>
           <label>
             Password
-            <input type="password" value={password}
+            <input
+              type="password"
+              value={password}
               onChange={(event) => setPassword(event.target.value)}
-              required autoComplete="current-password" />
+              required
+              autoComplete="current-password"
+            />
           </label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="primary-button" type="submit">
             Sign in securely <ArrowRight size={16} />
           </button>
           <small>
-            Create an admin account through the server's secure setup process.
+            Admin accounts must be created through the server's secure setup process.
             Public users cannot self-register as admins.
           </small>
         </form>
@@ -1490,116 +1591,181 @@ const uploadTempleImage = async () => {
       <section className="admin-card">
         <div className="eyebrow"><span /> CONTENT MANAGEMENT</div>
         <h1>Admin <em>workspace.</em></h1>
-        <p>Add a temple record for editorial review.</p>
+        <p>Add, edit and manage temple information.</p>
+        <p><strong>Account role:</strong> {role || 'Not detected — sign out and sign in again if permissions are missing.'}</p>
 
-        <form onSubmit={addTemple}>
+        <form onSubmit={saveTemple}>
+          <h2>{editingId !== null ? 'Edit temple' : 'Add a temple'}</h2>
           <label>
             Temple name
-            <input value={templeName}
-              onChange={(event) => setTempleName(event.target.value)}
-              required />
+            <input value={templeName} onChange={(event) => setTempleName(event.target.value)} required />
           </label>
+
           <div className="form-two">
             <label>
               City
-              <input value={city}
-                onChange={(event) => setCity(event.target.value)}
-                required />
+              <input value={city} onChange={(event) => setCity(event.target.value)} required />
             </label>
             <label>
               State
-              <input value={state}
-                onChange={(event) => setState(event.target.value)}
-                required />
+              <input value={state} onChange={(event) => setState(event.target.value)} required />
+            </label>
+          </div>
+
+          <label>
+            Full location / address
+            <input
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              placeholder="Area, road, district or full address"
+            />
+          </label>
+
+          <div className="form-two">
+            <label>
+              Main deity
+              <input value={deity} onChange={(event) => setDeity(event.target.value)} placeholder="e.g. Lord Shiva" />
             </label>
             <label>
-  Temple image
-  <input
-    type="file"
-    accept="image/png,image/jpeg,image/webp"
-    required
-    onChange={(event) => {
-      const file = event.target.files?.[0];
-
-      setTempleImage(file || null);
-      setImageUrl('');
-
-      if (file) {
-        setImagePreview(URL.createObjectURL(file));
-      } else {
-        setImagePreview('');
-      }
-    }}
-  />
-</label>
-
-{imagePreview && (
-  <img
-    src={imagePreview}
-    alt="Temple preview"
-    style={{
-      width: '100%',
-      maxHeight: 260,
-      objectFit: 'cover',
-      borderRadius: 12,
-      margin: '12px 0',
-    }}
-  />
-)}
-
+              Category
+              <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="e.g. Jyotirlinga" />
+            </label>
           </div>
-          <button className="primary-button" type="submit">
-            Create pending record <ArrowRight size={16} />
+
+          <label>
+            Description / what the temple is famous for
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="Explain its importance and what visitors know it for." />
+          </label>
+
+          <label>
+            History
+            <textarea value={history} onChange={(event) => setHistory(event.target.value)} rows={4} placeholder="Historical background and important facts." />
+          </label>
+
+          <div className="form-two">
+            <label>
+              Darshan timings
+              <input value={timings} onChange={(event) => setTimings(event.target.value)} placeholder="e.g. 5:00 AM – 9:00 PM" />
+            </label>
+            <label>
+              Best time to visit
+              <input value={bestTime} onChange={(event) => setBestTime(event.target.value)} placeholder="e.g. October–March" />
+            </label>
+          </div>
+
+          {isAdmin && (
+            <label>
+              Publication status
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="draft">Draft</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </label>
+          )}
+
+          <label>
+            Temple image {editingId !== null ? '(optional when keeping current image)' : ''}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              required={editingId === null && !imageUrl}
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                setTempleImage(file);
+                if (file) {
+                  const preview = URL.createObjectURL(file);
+                  setImagePreview(preview);
+                  setImageUrl('');
+                }
+              }}
+            />
+          </label>
+
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="Temple preview"
+              style={{
+                width: '100%',
+                maxHeight: 260,
+                objectFit: 'cover',
+                borderRadius: 12,
+                margin: '12px 0',
+              }}
+            />
+          )}
+
+          <button className="primary-button" type="submit" disabled={savingTemple || uploadingImage}>
+            {uploadingImage ? 'Uploading image…' : savingTemple ? 'Saving…' : editingId !== null ? 'Save temple changes' : 'Create temple record'}
+            <ArrowRight size={16} />
           </button>
+          {editingId !== null && (
+            <button className="text-button" type="button" onClick={resetForm}>
+              Cancel editing
+            </button>
+          )}
         </form>
 
         {message && <p className="form-message" role="status">{message}</p>}
 
         <div style={{ marginTop: 28 }}>
           <h2>Temple records</h2>
-          <button className="text-button" type="button"
-            onClick={() => loadTemples()}>
+          <button className="text-button" type="button" onClick={() => loadTemples()}>
             Refresh records
           </button>
 
           {loadingTemples && <p>Loading temples...</p>}
-
-          {!loadingTemples && temples.length === 0 && (
-            <p>No temple records found.</p>
-          )}
+          {!loadingTemples && temples.length === 0 && <p>No temple records found.</p>}
 
           {temples.map((temple) => (
-            <article key={temple.id}
-              style={{ borderTop: '1px solid #e5d8ca', padding: '16px 0' }}>
+            <article
+              key={temple.id}
+              style={{ borderTop: '1px solid #e5d8ca', padding: '16px 0' }}
+            >
               <h3>{temple.name}</h3>
               <p>{temple.city}, {temple.state}</p>
+              {temple.address && <p><strong>Location:</strong> {temple.address}</p>}
+              {temple.deity && <p><strong>Deity:</strong> {temple.deity}</p>}
+              {temple.description && <p>{temple.description}</p>}
               <p>Status: <strong>{temple.status}</strong></p>
 
-              {temple.status !== 'approved' && (
-                <button className="primary-button" type="button"
-                  onClick={() => updateStatus(temple, 'approved')}>
+              <button className="text-button" type="button" onClick={() => startEdit(temple)}>
+                Edit details
+              </button>
+
+              {isAdmin && temple.status !== 'approved' && (
+                <button className="primary-button" type="button" onClick={() => updateStatus(temple, 'approved')}>
                   Approve
                 </button>
               )}
-
-              {temple.status !== 'rejected' && (
-                <button className="text-button" type="button"
-                  onClick={() => updateStatus(temple, 'rejected')}>
+              {isAdmin && temple.status !== 'rejected' && (
+                <button className="text-button" type="button" onClick={() => updateStatus(temple, 'rejected')}>
                   Reject
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => deleteTemple(temple)}
+                  style={{ color: '#b42318' }}
+                >
+                  Delete temple
                 </button>
               )}
             </article>
           ))}
         </div>
 
-        <button className="text-button" onClick={logout}>
+        <button className="text-button" type="button" onClick={logout}>
           Sign out
         </button>
       </section>
     </main>
   );
 }
-
 
 export default function App() {
 

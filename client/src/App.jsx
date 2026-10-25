@@ -1402,7 +1402,7 @@ const uploadTempleImage = async () => {
           deity: 'Please add deity',
           history: 'Please add history',
           category: 'Heritage Temple',
-          imageUrl: uploadedImageUrl,
+         image_url: uploadedImageUrl,
         }),
       });
 

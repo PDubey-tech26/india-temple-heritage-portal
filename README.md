@@ -121,7 +121,13 @@ Ensure the database schema has been applied before using the API.
 - Use a strong, private JWT secret.
 - Protect administrative routes with authentication.
 - Do not publish administrator passwords, API keys, or database URLs.
+## 📸 Screenshots
 
+### Homepage
+![Temple Heritage Homepage](temple-homepage.png)
+
+### Admin Panel
+![Temple Heritage Admin Panel](temple-admin-panel.png)
 ## 📌 Project Status
 
 The application is deployed with a working frontend, backend API, PostgreSQL integration, and administrative temple-management interface.

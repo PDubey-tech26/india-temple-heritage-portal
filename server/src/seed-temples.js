@@ -1,153 +1,245 @@
-
-import 'dotenv/config';
-import { pool } from './db.js';
+import "dotenv/config";
+import { pool } from "./db.js";
 
 const temples = [
   {
-    name: 'Kashi Vishwanath Temple',
-    slug: 'kashi-vishwanath-temple',
-    city: 'Varanasi',
-    state: 'Uttar Pradesh',
-    deity: 'Lord Shiva',
-    category: 'Jyotirlinga',
-    description: 'A major Hindu pilgrimage temple dedicated to Lord Shiva in Varanasi.',
-    history: 'One of the prominent Shiva temples associated with the sacred city of Varanasi.',
-    best_time: 'Verify seasonal conditions and official temple notices before travelling.',
-    image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Kashi_Vishwanath_Temple.jpg/800px-Kashi_Vishwanath_Temple.jpg'
+    name: "Kashi Vishwanath Temple",
+    slug: "kashi-vishwanath-temple",
+    city: "Varanasi",
+    state: "Uttar Pradesh",
+    deity: "Lord Shiva",
+    category: "Jyotirlinga",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kashi%20Vishwanath%20Temple%20in%20Varanasi.jpg?width=1200",
+    description:
+      "One of the most revered Shiva temples, located in the sacred city of Varanasi.",
+    history:
+      "Kashi Vishwanath is an important pilgrimage destination associated with Lord Shiva.",
+    timings: "Check official temple timings before visiting.",
+    bestTime: "Check local weather and festival schedules before planning."
   },
   {
-    name: 'Shri Ram Janmabhoomi Mandir',
-    slug: 'shri-ram-janmabhoomi-mandir',
-    city: 'Ayodhya',
-    state: 'Uttar Pradesh',
-    deity: 'Lord Rama',
-    category: 'Hindu Temple',
-    description: 'A major temple dedicated to Lord Rama in Ayodhya.',
-    history: 'Located in Ayodhya, a city traditionally associated with Lord Rama.',
-    best_time: 'Check official notices for darshan timings and visitor arrangements.',
-    image_url: ''
+    name: "Shri Ram Janmabhoomi Mandir",
+    slug: "shri-ram-janmabhoomi-mandir",
+    city: "Ayodhya",
+    state: "Uttar Pradesh",
+    deity: "Lord Ram",
+    category: "Heritage Temple",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ram%20Mandir%2C%20Ayodhya.png?width=1200",
+    description:
+      "A major pilgrimage destination associated with the life and tradition of Lord Ram.",
+    history:
+      "Ayodhya holds an important place in Hindu religious tradition.",
+    timings: "Check official temple announcements before visiting.",
+    bestTime: "Plan ahead during festivals and peak pilgrimage periods."
   },
   {
-    name: 'Banke Bihari Temple',
-    slug: 'banke-bihari-temple',
-    city: 'Vrindavan',
-    state: 'Uttar Pradesh',
-    deity: 'Lord Krishna',
-    category: 'Krishna Temple',
-    description: 'A renowned Krishna temple in the Braj region.',
-    history: 'An important centre of Krishna devotion in Vrindavan.',
-    best_time: 'Check current official timings before visiting.',
-    image_url: ''
+    name: "Banke Bihari Temple",
+    slug: "banke-bihari-temple",
+    city: "Vrindavan",
+    state: "Uttar Pradesh",
+    deity: "Lord Krishna",
+    category: "Krishna Temple",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Banke%20Bihari%20Temple.jpg?width=1200",
+    description:
+      "A famous Krishna temple in Vrindavan known for its devotional traditions.",
+    history:
+      "The temple is an important center of Krishna devotion in the Braj region.",
+    timings: "Darshan timings can vary; verify locally.",
+    bestTime: "Check festival dates and crowd conditions."
   },
   {
-    name: 'Prem Mandir',
-    slug: 'prem-mandir',
-    city: 'Vrindavan',
-    state: 'Uttar Pradesh',
-    deity: 'Radha Krishna',
-    category: 'Hindu Temple',
-    description: 'A temple known for its elaborate architecture and devotional displays.',
-    history: 'A prominent modern temple in Vrindavan.',
-    best_time: 'Check the temple’s current schedule before travelling.',
-    image_url: ''
+    name: "Prem Mandir",
+    slug: "prem-mandir",
+    city: "Vrindavan",
+    state: "Uttar Pradesh",
+    deity: "Radha Krishna",
+    category: "Krishna Temple",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Prem%20Mandir%20Vrindavan.jpg?width=1200",
+    description:
+      "A marble temple in Vrindavan known for its architecture and devotional atmosphere.",
+    history:
+      "Prem Mandir is dedicated to the divine love of Radha Krishna and the traditions of Braj.",
+    timings: "Check current visiting hours before travelling.",
+    bestTime: "Consider evening visits and seasonal crowd conditions."
   },
   {
-    name: 'Shri Krishna Janmasthan',
-    slug: 'shri-krishna-janmasthan',
-    city: 'Mathura',
-    state: 'Uttar Pradesh',
-    deity: 'Lord Krishna',
-    category: 'Krishna Temple',
-    description: 'A major religious site associated with the birthplace tradition of Lord Krishna.',
-    history: 'Located in Mathura, a key city in Krishna devotional traditions.',
-    best_time: 'Verify entry rules and visiting hours with official sources.',
-    image_url: ''
+    name: "Shri Krishna Janmasthan",
+    slug: "shri-krishna-janmasthan",
+    city: "Mathura",
+    state: "Uttar Pradesh",
+    deity: "Lord Krishna",
+    category: "Krishna Temple",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Krishna%20Janmasthan%20Mathura.jpg?width=1200",
+    description:
+      "A major religious destination in Mathura associated with the birth of Lord Krishna.",
+    history:
+      "Mathura is an important city in the religious traditions surrounding Lord Krishna.",
+    timings: "Verify current darshan timings and entry instructions.",
+    bestTime: "Plan carefully around Janmashtami and other festivals."
   },
   {
-    name: 'Kedarnath Temple',
-    slug: 'kedarnath-temple',
-    city: 'Kedarnath',
-    state: 'Uttarakhand',
-    deity: 'Lord Shiva',
-    category: 'Jyotirlinga',
-    description: 'A Himalayan pilgrimage temple dedicated to Lord Shiva.',
-    history: 'Part of the Char Dham pilgrimage tradition in Uttarakhand.',
-    best_time: 'Seasonal opening dates depend on official announcements and weather.',
-    image_url: ''
+    name: "Kedarnath Temple",
+    slug: "kedarnath-temple",
+    city: "Kedarnath",
+    state: "Uttarakhand",
+    deity: "Lord Shiva",
+    category: "Jyotirlinga",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kedarnath%20Temple.jpg?width=1200",
+    description:
+      "A Himalayan pilgrimage destination associated with Lord Shiva.",
+    history:
+      "Kedarnath is one of the prominent pilgrimage sites in the Himalayan region.",
+    timings: "Check official opening dates and darshan schedules.",
+    bestTime: "Travel only after checking weather and route advisories."
   },
   {
-    name: 'Badrinath Temple',
-    slug: 'badrinath-temple',
-    city: 'Badrinath',
-    state: 'Uttarakhand',
-    deity: 'Lord Vishnu',
-    category: 'Char Dham',
-    description: 'A prominent Vishnu temple in the Himalayan region.',
-    history: 'One of the important pilgrimage destinations in Uttarakhand.',
-    best_time: 'Confirm seasonal access and official opening dates before travel.',
-    image_url: ''
+    name: "Badrinath Temple",
+    slug: "badrinath-temple",
+    city: "Badrinath",
+    state: "Uttarakhand",
+    deity: "Lord Vishnu",
+    category: "Char Dham",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Badrinath%20Temple.jpg?width=1200",
+    description:
+      "A renowned Himalayan pilgrimage site dedicated to Lord Vishnu.",
+    history:
+      "Badrinath is an important destination in the Char Dham pilgrimage tradition.",
+    timings: "Check official opening dates and darshan timings.",
+    bestTime: "Check road conditions and weather before travelling."
   },
   {
-    name: 'Jagannath Temple',
-    slug: 'jagannath-temple-puri',
-    city: 'Puri',
-    state: 'Odisha',
-    deity: 'Lord Jagannath',
-    category: 'Hindu Temple',
-    description: 'A major pilgrimage temple in Puri, Odisha.',
-    history: 'Widely known for its annual Rath Yatra festival.',
-    best_time: 'Check official notices, particularly during major festivals.',
-    image_url: ''
+    name: "Jagannath Temple",
+    slug: "jagannath-temple-puri",
+    city: "Puri",
+    state: "Odisha",
+    deity: "Lord Jagannath",
+    category: "Char Dham",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Jagannath%20Temple%20Puri.jpg?width=1200",
+    description:
+      "A historic pilgrimage center renowned for its worship traditions and Rath Yatra.",
+    history:
+      "Jagannath Temple is central to the religious and cultural life of Puri.",
+    timings: "Check official temple schedules and entry requirements.",
+    bestTime: "Allow extra time during major festivals."
   },
   {
-    name: 'Meenakshi Amman Temple',
-    slug: 'meenakshi-amman-temple',
-    city: 'Madurai',
-    state: 'Tamil Nadu',
-    deity: 'Goddess Meenakshi and Lord Sundareswarar',
-    category: 'Hindu Temple',
-    description: 'A celebrated historic temple complex in Madurai.',
-    history: 'Known for its monumental gopurams and Dravidian architecture.',
-    best_time: 'Check official timings and festival schedules before visiting.',
-    image_url: ''
+    name: "Meenakshi Amman Temple",
+    slug: "meenakshi-amman-temple",
+    city: "Madurai",
+    state: "Tamil Nadu",
+    deity: "Goddess Meenakshi and Lord Sundareswarar",
+    category: "Shakti and Heritage",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Meenakshi%20Temple%2C%20Madurai%2C%20India.jpg?width=1200",
+    description:
+      "A celebrated temple complex known for its richly decorated gopurams and sculptures.",
+    history:
+      "Meenakshi Amman Temple is a major religious and cultural landmark in Madurai.",
+    timings: "Verify current temple timings before travelling.",
+    bestTime: "Consider local weather and festival schedules."
   },
   {
-    name: 'Somnath Temple',
-    slug: 'somnath-temple',
-    city: 'Prabhas Patan',
-    state: 'Gujarat',
-    deity: 'Lord Shiva',
-    category: 'Jyotirlinga',
-    description: 'A prominent Shiva pilgrimage temple on the Gujarat coast.',
-    history: 'Traditionally counted among the twelve Jyotirlinga shrines.',
-    best_time: 'Check official visitor guidance before travelling.',
-    image_url: ''
+    name: "Somnath Temple",
+    slug: "somnath-temple",
+    city: "Prabhas Patan",
+    state: "Gujarat",
+    deity: "Lord Shiva",
+    category: "Jyotirlinga",
+    image_url:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Somnath%20Temple.JPG?width=1200",
+    description:
+      "A prominent coastal pilgrimage destination associated with Lord Shiva.",
+    history:
+      "Somnath is widely recognized as one of the twelve Jyotirlinga pilgrimage sites.",
+    timings: "Check the official temple schedule before visiting.",
+    bestTime: "Review weather and festival dates when planning."
   }
 ];
 
-try {
-  await pool.query('BEGIN');
+async function seedTemples() {
+  const client = await pool.connect();
 
-  for (const t of temples) {
-    await pool.query(
-      `INSERT INTO temples
-       (name, slug, city, state, deity, category, image_url,
-        description, history, best_time, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'approved')
-       ON CONFLICT (slug) DO NOTHING`,
-      [
-        t.name, t.slug, t.city, t.state, t.deity, t.category,
-        t.image_url || null, t.description, t.history, t.best_time
-      ]
-    );
+  try {
+    await client.query("BEGIN");
+
+    for (const temple of temples) {
+      const result = await client.query(
+        `INSERT INTO temples (
+          name,
+          slug,
+          city,
+          state,
+          address,
+          deity,
+          category,
+          image_url,
+          description,
+          history,
+          darshan_timings,
+          best_time,
+          status
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7,
+          $8, $9, $10, $11, $12, $13
+        )
+        ON CONFLICT (slug) DO NOTHING`,
+        [
+          temple.name,
+          temple.slug,
+          temple.city,
+          temple.state,
+          `${temple.city}, ${temple.state}`,
+          temple.deity,
+          temple.category,
+          temple.image_url,
+          temple.description,
+          temple.history,
+          temple.timings,
+          temple.bestTime,
+          "approved"
+        ]
+      );
+
+      console.log(
+        `${temple.name}: ${
+          result.rowCount === 1 ? "INSERTED" : "ALREADY EXISTS"
+        }`
+      );
+    }
+
+    await client.query("COMMIT");
+
+    const summary = await client.query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (
+          WHERE status = 'approved'
+        )::int AS approved
+      FROM temples
+    `);
+
+    console.log("\nSeed completed successfully.");
+    console.log("Database summary:", summary.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Seed failed:", error.message);
+    process.exitCode = 1;
+  } finally {
+    client.release();
+    await pool.end();
   }
-
-  await pool.query('COMMIT');
-  console.log(`Seed complete. Processed ${temples.length} temple records.`);
-} catch (err) {
-  await pool.query('ROLLBACK');
-  console.error('Temple seed failed:', err.message);
-  process.exitCode = 1;
-} finally {
-  await pool.end();
 }
+
+seedTemples().catch((error) => {
+  console.error("Unexpected seed error:", error.message);
+  process.exitCode = 1;
+});
